@@ -1,0 +1,24 @@
+.venv/
+__pycache__/
+*.pyc
+
+build_32bit/*
+build_64bit/*
+
+deps/
+
+# meshes
+*.msh
+*.mesh
+*.igb
+*.dat
+*.raw
+*.intra
+*.extra
+*.elem
+*.pts
+*.belem
+*.bpts
+
+# outputs
+OUTPUT_DIR/

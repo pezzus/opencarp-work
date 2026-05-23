@@ -1,0 +1,13 @@
+[project]
+name = "opencarp-work"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "matplotlib>=3.10.9",
+    "meshio>=5.3.5",
+    "numpy>=2.4.6",
+    "pysz>=1.0.3",
+    "pyvista>=0.48.4",
+    "rich>=15.0.0",
+    "scipy>=1.17.1",
+]
