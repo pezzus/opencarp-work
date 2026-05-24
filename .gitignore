@@ -22,3 +22,4 @@ deps/
 
 # outputs
 OUTPUT_DIR/
+bench_logs/

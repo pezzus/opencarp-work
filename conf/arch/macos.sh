@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 
 export OC_WORK="${HOME}/Desktop/opencarp-work"
+OC_SRC="${OC_WORK}/src/openCARP"
+OC_EXT="${OC_WORK}/deps"
+
 export OC32_BIN="${OC_SRC}/build_32bit/bin/openCARP"
 export OC64_BIN="${OC_SRC}/build_64bit/bin/openCARP"
 export GMSH="/Applications/Gmsh.app/Contents/MacOS/gmsh"
 
-OC_SRC="${OC_WORK}/src/openCARP"
-OC_EXT="${OC_WORK}/external"
 
 # Not exporting arch to avoid conflicts when testing 32 and 64 bits
 export PETSC_DIR="${OC_EXT}/petsc-3.25.1"

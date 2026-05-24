@@ -1,0 +1,88 @@
+# ----------------------------------------------------------------------------------------
+# HOW TO RUN THE SIMULATION
+# ----------------------------------------------------------------------------------------
+# Command:
+# mpirun -n [np] [openCARP_executable] +F [filename].par \
+#        -flavor [ginkgo|petsc] -parab_options_file [solver_options.json]
+#
+# Notes:
+# - [np] should not exceed the number of tags inyour mesh.
+#
+# ----------------------------------------------
+# PHYSICAL REGION DEFINITION
+# ----------------------------------------------
+num_phys_regions                     = 1
+phys_region[0].name                  = "EMI MESH"
+phys_region[0].ptype                 = 6           # EMI model
+phys_region[0].num_IDs               = 1
+phys_region[0].ID[0]                 = 0
+#
+# ----------------------------------------------
+# SIMULATION SETTINGS
+# ----------------------------------------------
+dt                                   = 5           # µs
+tend                                 = 10          # total simulation time
+spacedt                              = 0.25        # Output every t ms
+timedt                               = 0.25        # Screen output every t ms
+output_level                         = 10          # Verbosity level
+dump2MatLab                          = false       # Output to MATLAB
+#
+# ----------------------------------------------
+# MESH CONFIGURATION
+# ----------------------------------------------
+#   (at least mesh has to have two myocytes and one extracellular)
+meshname                             = "emigrid"
+
+# ----------------------------------------------
+# GREGION DEFINITION (CONDUCTIVITY SETTINGS)
+# ----------------------------------------------
+num_gregions                         = 2
+
+# Extracellular region
+gregion[0].name                      = "extra_regions_default"
+gregion[0].g_bath                    = 2.0      # Isotropic conductivity [S/m]
+
+# Intracellular region
+gregion[1].name                      = "intra_regions_default"
+gregion[1].g_bath                    = 0.4      # Isotropic conductivity [S/m]
+
+# ----------------------------------------------
+# STIMULATION SETTINGS
+# ----------------------------------------------
+num_stim                             = 1
+
+# Early excited region
+stim[0].name                         = "excitedReg"
+stim[0].ptcl.start                   = 0.0     # Start time (ms)
+stim[0].ptcl.duration                = 1.0     # Duration (ms)
+stim[0].pulse.strength               = 2000.0  # Strength (uA/cm²)
+stim[0].crct.type                    = 0       # Transmembrane current
+stim[0].elec.geomID                  = -1      # No Tag, via position
+stim[0].elec.dump_vtx_file           = 1       # Dump selected membrane vertices for inspection
+stim[0].elec.geom_type = 1
+stim[0].elec.radius = 20.0
+stim[0].elec.p0[0] = -45.0
+stim[0].elec.p0[1] = -15.0
+stim[0].elec.p0[2] = -15.0
+
+
+# Boundary condition
+#stim[1].name                         = "BC"
+#stim[1].crct.type                    = 3       # Apply zero to one coordinate
+#stim[1].elec.geom_type               = 1       # Geometry type (1 = sphere)
+#stim[1].elec.radius                  = 40      # Radius (µm)
+#stim[1].elec.p0[0]                   = 10.0    # X coordinate
+#stim[1].elec.p0[1]                   = 10.0    # Y coordinate
+#stim[1].elec.p0[2]                   = 10.0    # Z coordinate
+
+# ----------------------------------------------
+# IONIC AND GAP JUNCTION MODELS
+# ----------------------------------------------
+num_imp_regions                      = 2
+
+# Default ionic model
+imp_region_emi[0].im                 = "AlievPanfilov"
+
+# Default gap-junction model
+imp_region_emi[1].im                 = "Plonsey"
+imp_region_emi[1].im_param           = "Rm=0.0045"   # to change the parameter
