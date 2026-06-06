@@ -58,6 +58,12 @@ def get_durrer_colormap(n: int = 256):
 
 def from_carp(meshbase: str | Path) -> tuple[np.ndarray, np.ndarray]:
     """Read an openCARP mesh from .pts/.elem or .bpts/.belem."""
+    pts, elm, _ = from_carp_with_tags(meshbase)
+    return pts, elm
+
+
+def from_carp_with_tags(meshbase: str | Path) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Read an openCARP mesh and keep the element tag column."""
     meshbase = Path(meshbase)
 
     bpts = meshbase.with_suffix(".bpts")
@@ -82,19 +88,22 @@ def from_carp(meshbase: str | Path) -> tuple[np.ndarray, np.ndarray]:
         with open(belem, "rb") as fi:
             nelm = int(fi.read(1024).split()[0])
             elm = np.fromfile(fi, dtype=np.int32).reshape((nelm, -1))
+            tags = elm[:, -1]
             elm = elm[:, 1:-1]
     elif elemf.is_file():
         with open(elemf, "r") as fi:
             num_elm = int(fi.readline().strip())
             ncols = len(fi.readline().split())
-        elm = loadtxt(elemf, dtype=int, skiprows=1, usecols=range(1, ncols))
-        elm = elm[:, 0:-1]
-        if elm.shape[0] != num_elm:
+        data = loadtxt(elemf, dtype=int, skiprows=1, usecols=range(1, ncols))
+        data = np.atleast_2d(data)
+        if data.shape[0] != num_elm:
             raise ValueError("Invalid .elem file: number of elements mismatch")
+        tags = data[:, -1]
+        elm = data[:, 0:-1]
     else:
         raise FileNotFoundError(f"Cannot find {meshbase}.(belem|elem)")
 
-    return pts, elm
+    return pts, elm, tags
 
 
 def to_pyvista(pts: np.ndarray, elm: np.ndarray) -> pv.UnstructuredGrid:
@@ -302,8 +311,16 @@ def write_timeseries_xdmf(
     console.print(f"Wrote {filename}")
 
 
-def save_mesh_vtkhdf(filename: Path, pts: np.ndarray, elm: np.ndarray) -> None:
+def save_mesh_vtkhdf(
+    filename: Path,
+    pts: np.ndarray,
+    elm: np.ndarray,
+    cell_data: dict[str, np.ndarray] | None = None,
+) -> None:
     mesh = to_pyvista(pts, elm)
+    if cell_data is not None:
+        for name, data in cell_data.items():
+            mesh.cell_data[name] = data
     mesh.save(filename)
     console.print(f"Wrote {filename}")
 
@@ -313,6 +330,28 @@ def save_activation_vtkhdf(filename: Path, pts: np.ndarray, elm: np.ndarray, act
     mesh.cell_data["act"] = act
     mesh.save(filename)
     console.print(f"Wrote {filename}")
+
+
+def read_part_file(part_file: Path) -> tuple[np.ndarray, np.ndarray]:
+    """Read an openCARP .part file as tag -> partition pairs."""
+    data = np.loadtxt(part_file, dtype=np.int64)
+    data = np.atleast_1d(data)
+    if data.size < 1:
+        raise ValueError(f"Invalid part file: {part_file}")
+
+    expected = int(data[0])
+    rest = data[1:]
+    if rest.size != expected:
+        raise ValueError(
+            f"Invalid part file: expected {expected} integers after the header, got {rest.size}"
+        )
+    if expected % 2 != 0:
+        raise ValueError(
+            f"Invalid part file: expected an even number of integers after the header, got {expected}"
+        )
+
+    pairs = rest.reshape(expected // 2, 2)
+    return pairs[:, 0], pairs[:, 1]
 
 
 def export_vm(
@@ -407,9 +446,9 @@ def parse_args() -> argparse.Namespace:
         description="Convert openCARP output to ParaView-readable files."
     )
     parser.add_argument(
-        "output_dir",
+        "path",
         type=Path,
-        help="openCARP output directory containing vm.igb, phie.igb, emigrid_m, etc.",
+        help="openCARP output directory for postprocess mode, or mesh basename for input-mesh mode.",
     )
     parser.add_argument(
         "-o",
@@ -451,9 +490,14 @@ def parse_args() -> argparse.Namespace:
         help="Write myocardium mesh only as mesh_m.vtkhdf.",
     )
     parser.add_argument(
+        "--input-mesh",
+        action="store_true",
+        help="Inspect an input mesh basename and write a VTK file with tag and partition data.",
+    )
+    parser.add_argument(
         "--all",
         action="store_true",
-        help="Write Vm, activation, phie, and mesh.",
+        help="Write Vm, activation, phie, and mesh in postprocess mode.",
     )
     parser.add_argument(
         "--render-act",
@@ -466,9 +510,40 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
-    output_dir = args.output_dir.resolve()
+    target = args.path.resolve()
     out_dir = args.out_dir.resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    if args.input_mesh:
+        if any([args.vm, args.act, args.phie, args.mesh, args.render_act, args.all]):
+            raise SystemExit("--input-mesh cannot be combined with postprocess options")
+
+        meshbase = target
+        part_file = meshbase.with_suffix(".part")
+
+        console.print(f"[bold]Input mesh:[/bold] {meshbase}")
+        console.print(f"[bold]Output:[/bold] {out_dir}")
+
+        pts, elm, tags = from_carp_with_tags(meshbase)
+
+        cell_data: dict[str, np.ndarray] = {"tag": tags.astype(np.int32, copy=False)}
+        if part_file.is_file():
+            console.print(f"[bold]Reading partition map:[/bold] {part_file}")
+            part_tags, part_ids = read_part_file(part_file)
+            tag_to_part = {int(tag): int(part) for tag, part in zip(part_tags, part_ids)}
+
+            missing = sorted(set(np.unique(tags).tolist()) - set(tag_to_part.keys()))
+            if missing:
+                raise ValueError(f"Partition file does not cover tags: {missing[:10]}")
+
+            partitions = np.array([tag_to_part[int(tag)] for tag in tags], dtype=np.int32)
+            cell_data["partition"] = partitions
+        else:
+            console.print(f"[yellow]No partition file found:[/yellow] {part_file}")
+
+        save_mesh_vtkhdf(out_dir / f"{meshbase.name}.vtkhdf", pts, elm, cell_data)
+        console.print("[green bold]Done.[/green bold]")
+        return
 
     if args.all:
         args.vm = True
@@ -481,6 +556,7 @@ def main() -> None:
         console.print("[yellow]Nothing selected. Use --vm, --act, --phie, --mesh, or --all.[/yellow]")
         return
 
+    output_dir = target
     dt = get_dt(output_dir, args.dt)
 
     console.print(f"[bold]Input:[/bold]  {output_dir}")
