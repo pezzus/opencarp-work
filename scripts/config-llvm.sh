@@ -3,7 +3,34 @@ set -euo pipefail
 
 LLVM_BASEURL=https://github.com/llvm/llvm-project/releases/download
 LLVM_VERSION=18.1.8
-LLVM_DIR=$(pwd)/llvm-project-${LLVM_VERSION}.src
+LLVM_DIR="$(pwd)/llvm-project-${LLVM_VERSION}.src"
+
+HOST="$(hostname -s)"
+
+case "${HOST}" in
+  daint-*)
+    PLATFORM="cscs"
+    export CC=gcc
+    export CXX=g++
+    ;;
+  *)
+    PLATFORM="local"
+    ;;
+esac
+
+echo "Host         : ${HOST}"
+echo "Platform     : ${PLATFORM}"
+echo "C compiler   : $(command -v "${CC:-cc}")"
+echo "C++ compiler : $(command -v "${CXX:-c++}")"
+
+CMAKE_COMPILER_OPTIONS=()
+
+if [[ "${PLATFORM}" == "cscs" ]]; then
+  CMAKE_COMPILER_OPTIONS+=(
+    "-DCMAKE_C_COMPILER=gcc"
+    "-DCMAKE_CXX_COMPILER=g++"
+  )
+fi
 
 if [[ ! -d "${LLVM_DIR}" ]]; then
   echo "Downloading LLVM ${LLVM_VERSION}..."
@@ -28,6 +55,7 @@ fi
 PYBIND11_INSTALL="${PWD}/third-party/pybind11-install"
 
 cmake -S "${PYBIND11_SRC}" -B "${PYBIND11_SRC}/build" -G Ninja \
+  "${CMAKE_COMPILER_OPTIONS[@]}" \
   -DCMAKE_INSTALL_PREFIX="${PYBIND11_INSTALL}" \
   -DPYBIND11_TEST=OFF
 
@@ -35,7 +63,8 @@ cmake --build "${PYBIND11_SRC}/build"
 cmake --install "${PYBIND11_SRC}/build"
 
 echo "Configuring LLVM..."
-cmake -S. -B build -G Ninja llvm \
+cmake -S . -B build -G Ninja llvm \
+    "${CMAKE_COMPILER_OPTIONS[@]}" \
     -DLLVM_ENABLE_PROJECTS="mlir;clang;lld" \
     -DLLVM_TARGETS_TO_BUILD="host" \
     -DLLVM_ENABLE_RUNTIMES="openmp;compiler-rt;libcxx;libcxxabi;libunwind" \
@@ -65,5 +94,12 @@ for sp in site.getsitepackages():
     break
 PY
 
-install_name_tool -add_rpath "${LLVM_DIR}/install/lib" \
-    ${LLVM_DIR}/install/python_packages/mlir_core/mlir/_mlir_libs/_mlir.cpython-314-darwin.so
+MLIR_EXT="$(find \
+  "${LLVM_DIR}/install/python_packages/mlir_core/mlir/_mlir_libs" \
+  -maxdepth 1 \
+  -name '_mlir*.so' \
+  -print -quit)"
+
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  install_name_tool -add_rpath "${LLVM_DIR}/install/lib" "${MLIR_EXT}"
+fi
