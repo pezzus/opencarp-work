@@ -28,7 +28,7 @@ INT_TYPE="${3:-32}"
 BUILD_TYPE="${4:-opt}"
 
 case "${REAL_TYPE}" in
-  float|double) ;;
+  single|double) ;;
   *)
     echo "Error: real must be 'single' or 'double', got '${REAL_TYPE}'" >&2
     usage
@@ -54,6 +54,17 @@ case "${BUILD_TYPE}" in
     ;;
 esac
 
+HOST="$(hostname -s)"
+
+case "${HOST}" in
+  daint-*)
+    PLATFORM="cscs"
+    ;;
+  *)
+    PLATFORM="local"
+    ;;
+esac
+
 if [[ "${INT_TYPE}" == "64" ]]; then
   WITH_64_BIT_INDICES=1
 else
@@ -64,14 +75,13 @@ if [[ "${BUILD_TYPE}" == "dbg" ]]; then
   WITH_DEBUGGING=1
 else
   WITH_DEBUGGING=0
-  export COPTFLAGS="-O3 -march=native"
-  export FOPTFLAGS="-O3 -march=native"
-  export CXXOPTFLAGS="-O3 -march=native"
 fi
 
 PETSC_ARCH="arch-${INT_TYPE}-${REAL_TYPE}-${BUILD_TYPE}"
 PETSC_DIR="$(pwd)/petsc-${PETSC_VERSION}"
 
+echo "Host          : ${HOST}"
+echo "Platform      : ${PLATFORM}"
 echo "PETSc version : ${PETSC_VERSION}"
 echo "Real type     : ${REAL_TYPE}"
 echo "Index type    : ${INT_TYPE}"
@@ -88,27 +98,43 @@ fi
 
 cd "${PETSC_DIR}"
 
+CONFIGURE_OPTIONS=(
+  "PETSC_ARCH=${PETSC_ARCH}"
+  "COPTFLAGS=-O3"
+  "CXXOPTFLAGS=-O3"
+  "FOPTFLAGS=-O3"
+  "CUDAOPTFLAGS=-O3"
+  "--with-mpi=1"
+  "--with-cc=mpicc"
+  "--with-cxx=mpicxx"
+  "--with-fc=mpif90"
+  "--with-f77=mpif77"
+  "--with-make-exec=gmake"
+  "--with-fortran-bindings=0"
+  "--with-precision=${REAL_TYPE}"
+  "--with-64-bit-indices=${WITH_64_BIT_INDICES}"
+  "--with-clanguage=c"
+  "--download-metis"
+  "--download-parmetis"
+  "--download-hypre"
+  "--with-debugging=${WITH_DEBUGGING}"
+)
+
+if [[ "${PLATFORM}" == "cscs" ]]; then
+  CONFIGURE_OPTIONS+=(
+    "--with-batch=1"
+    "--with-cuda=1"
+    "--with-cuda-arch=90"
+    "--download-umpire"
+    "--with-openblas-dir=/user-environment/env/default"
+    "--known-64-bit-blas-indices=0"
+    "--known-sdot-returns-double=0"
+    "--known-snrm2-returns-double=0"
+  )
+fi
+
 echo "Configuring PETSc..."
-./configure \
-  PETSC_ARCH="${PETSC_ARCH}" \
-  COPTFLAGS="-O3" \
-  CXXOPTFLAGS="-O3" \
-  FOPTFLAGS="-O3" \
-  CUDAOPTFLAGS="-O3" \
-  --with-mpi=1 \
-  --with-cc=mpicc \
-  --with-cxx=mpicxx \
-  --with-fc=mpif90 \
-  --with-f77=mpif77 \
-  --with-make-exec=gmake \
-  --with-fortran-bindings=0 \
-  --with-precision="${REAL_TYPE}" \
-  --with-64-bit-indices="${WITH_64_BIT_INDICES}" \
-  --with-clanguage=c \
-  --download-metis \
-  --download-parmetis \
-  --download-hypre \
-  --with-debugging="${WITH_DEBUGGING}"
+./configure "${CONFIGURE_OPTIONS[@]}"
 
 echo "Building PETSc..."
 make PETSC_DIR="${PETSC_DIR}" PETSC_ARCH="${PETSC_ARCH}" all
