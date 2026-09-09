@@ -8,12 +8,10 @@ export OC32_BIN="${OC_SRC}/build_32bit/bin/openCARP"
 export OC64_BIN="${OC_SRC}/build_64bit/bin/openCARP"
 export GMSH="/Applications/Gmsh.app/Contents/MacOS/gmsh"
 
-
 # Not exporting arch to avoid conflicts when testing 32 and 64 bits
-export PETSC_DIR="${OC_EXT}/petsc-3.25.1"
-#export PETSC_ARCH="arch-64-double-opt"
+export PETSC_DIR="${OC_EXT}/petsc-3.25.5"
+export PETSC_ARCH="arch-32-double-opt"
 #export LLVM_DIR="${OC_EXT}/llvm-project-18.1.8.src"
-#
 
 #alias ocbuild='cd "${OC_SRC}"'
 #alias ocwork='cd "${OC_WORK}"'

@@ -9,28 +9,28 @@ Usage:
   $0 [version] [real] [int] [build]
 
 Arguments:
-  version   PETSc version                 default: 3.25.0
-  real      float | double                default: double
+  version   PETSc version                 default: 3.25.5
+  real      single | double               default: double
   int       32 | 64                       default: 32
-  build     opt | dbg                     default: dbg
+  build     opt | dbg                     default: opt
 
 Examples:
   $0
   $0 3.25.0
   $0 3.25.0 double 64 dbg
-  $0 3.24.1 float 32 opt
+  $0 3.24.1 single 32 opt
 EOF
 }
 
-PETSC_VERSION="${1:-3.25.0}"
+PETSC_VERSION="${1:-3.25.5}"
 REAL_TYPE="${2:-double}"
 INT_TYPE="${3:-32}"
-BUILD_TYPE="${4:-dbg}"
+BUILD_TYPE="${4:-opt}"
 
 case "${REAL_TYPE}" in
   float|double) ;;
   *)
-    echo "Error: real must be 'float' or 'double', got '${REAL_TYPE}'" >&2
+    echo "Error: real must be 'single' or 'double', got '${REAL_TYPE}'" >&2
     usage
     exit 1
     ;;

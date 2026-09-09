@@ -307,7 +307,7 @@ def write_timeseries_xdmf(
                 writer.write_data(t, point_data={name: data[k, :]})
             else:
                 raise ValueError("association must be 'cell' or 'point'")
-        
+
     console.print(f"Wrote {filename}")
 
 
