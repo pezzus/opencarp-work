@@ -44,7 +44,7 @@ PETSC_ARCH="arch-${INT_TYPE}-double-opt" \
 cmake -S . -B "build_${INT_TYPE}bit" -G Ninja \
     -DDLOPEN=ON \
     -DCMAKE_BUILD_TYPE=Release \
-    -DENABLE_GINKGO=OFF \
+    -DENABLE_GINKGO=ON \
     -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
     -DCMAKE_OSX_SYSROOT="$(xcrun --sdk macosx --show-sdk-path)" \
     -DUSE_OPENMP=OFF \
