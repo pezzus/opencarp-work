@@ -19,6 +19,9 @@ Examples:
   $0 3.25.0
   $0 3.25.0 double 64 dbg
   $0 3.24.1 single 32 opt
+
+Environment:
+  PETSC_BUILD_JOBS   Override the number of parallel build jobs
 EOF
 }
 
@@ -54,16 +57,28 @@ case "${BUILD_TYPE}" in
     ;;
 esac
 
+# ---------------------------------------------------------------------------
+# Platform detection
+# ---------------------------------------------------------------------------
+
 HOST="$(hostname -s)"
 
 case "${HOST}" in
-  daint-*)
+  daint-*|nid[0-9]*)
     PLATFORM="cscs"
     ;;
   *)
-    PLATFORM="local"
+    if [[ "${SLURM_CLUSTER_NAME:-}" == "daint" ]]; then
+      PLATFORM="cscs"
+    else
+      PLATFORM="local"
+    fi
     ;;
 esac
+
+# ---------------------------------------------------------------------------
+# Build configuration
+# ---------------------------------------------------------------------------
 
 if [[ "${INT_TYPE}" == "64" ]]; then
   WITH_64_BIT_INDICES=1
@@ -80,23 +95,43 @@ fi
 PETSC_ARCH="arch-${INT_TYPE}-${REAL_TYPE}-${BUILD_TYPE}"
 PETSC_DIR="$(pwd)/petsc-${PETSC_VERSION}"
 
+# nproc respects CPU affinity on Linux, including Slurm restrictions.
+# Allow an explicit override for large builds.
+BUILD_JOBS="${PETSC_BUILD_JOBS:-$(getconf _NPROCESSORS_ONLN)}"
+
+if command -v nproc >/dev/null 2>&1; then
+  BUILD_JOBS="${PETSC_BUILD_JOBS:-$(nproc)}"
+fi
+
 echo "Host          : ${HOST}"
 echo "Platform      : ${PLATFORM}"
 echo "PETSc version : ${PETSC_VERSION}"
 echo "Real type     : ${REAL_TYPE}"
 echo "Index type    : ${INT_TYPE}"
 echo "Build type    : ${BUILD_TYPE}"
+echo "Build jobs    : ${BUILD_JOBS}"
 echo "PETSC_DIR     : ${PETSC_DIR}"
 echo "PETSC_ARCH    : ${PETSC_ARCH}"
 
+# ---------------------------------------------------------------------------
+# Download
+# ---------------------------------------------------------------------------
+
 if [[ ! -d "${PETSC_DIR}" ]]; then
   echo "Downloading PETSc ${PETSC_VERSION}..."
-  curl -L "${PETSC_BASEURL}/petsc-${PETSC_VERSION}.tar.gz" | tar xz
+
+  curl -fL \
+    "${PETSC_BASEURL}/petsc-${PETSC_VERSION}.tar.gz" \
+    | tar -xz -C "$(pwd)"
 else
   echo "Directory ${PETSC_DIR} already exists, skipping download."
 fi
 
 cd "${PETSC_DIR}"
+
+# ---------------------------------------------------------------------------
+# Configure
+# ---------------------------------------------------------------------------
 
 CONFIGURE_OPTIONS=(
   "PETSC_ARCH=${PETSC_ARCH}"
@@ -135,11 +170,36 @@ fi
 echo "Configuring PETSc..."
 ./configure "${CONFIGURE_OPTIONS[@]}"
 
-echo "Building PETSc..."
-make PETSC_DIR="${PETSC_DIR}" PETSC_ARCH="${PETSC_ARCH}" all
+# ---------------------------------------------------------------------------
+# Build
+# ---------------------------------------------------------------------------
 
-echo "Checking PETSc..."
-make PETSC_DIR="${PETSC_DIR}" PETSC_ARCH="${PETSC_ARCH}" check
+echo "Building PETSc (${BUILD_JOBS} jobs)..."
+
+make \
+  PETSC_DIR="${PETSC_DIR}" \
+  PETSC_ARCH="${PETSC_ARCH}" \
+  -j "${BUILD_JOBS}" \
+  all
+
+# ---------------------------------------------------------------------------
+# Check
+# ---------------------------------------------------------------------------
+
+if [[ "${PLATFORM}" == "cscs" ]]; then
+  echo "Skipping PETSc checks (batch configuration)."
+else
+  echo "Checking PETSc..."
+
+  make \
+    PETSC_DIR="${PETSC_DIR}" \
+    PETSC_ARCH="${PETSC_ARCH}" \
+    check
+fi
+
+# ---------------------------------------------------------------------------
+# Summary
+# ---------------------------------------------------------------------------
 
 echo
 echo "Done."

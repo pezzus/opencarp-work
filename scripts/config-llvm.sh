@@ -13,7 +13,7 @@ LLVM_INSTALL="${ROOT_DIR}/llvm-${LLVM_VERSION}"
 HOST="$(hostname -s)"
 
 # On a Daint compute node HOST will normally be nid..., not daint-*.
-if [[ "${HOST}" == daint-* || "${SLURM_CLUSTER_NAME:-}" == "daint" ]]; then
+if [[ "${HOST}" == daint-* || "${HOST}" == nid* || "${SLURM_CLUSTER_NAME:-}" == "daint" ]]; then
   PLATFORM="cscs"
   export CC=gcc
   export CXX=g++
