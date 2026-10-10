@@ -105,13 +105,19 @@ CMAKE_OPTIONS=(
 )
 
 if [[ "${PLATFORM}" == "cscs" ]]; then
-  CMAKE_OPTIONS+=(
-    "-DCMAKE_C_COMPILER=$(command -v mpicc)"
-    "-DCMAKE_CXX_COMPILER=$(command -v mpicxx)"
-    "-DCMAKE_PREFIX_PATH=${LLVM_DIR}"
-    "-DENABLE_MLIR_CODEGEN=ON"
-    "-DUSE_OPENMP=ON"
-  )
+    CUDA_NVCC="$(command -v nvcc)"
+
+    export LD_LIBRARY_PATH="${LLVM_DIR}/lib:${LLVM_DIR}/python_packages/mlir_core/mlir/_mlir_libs:${LD_LIBRARY_PATH:-}"
+
+    CMAKE_OPTIONS+=(
+        "-DCMAKE_C_COMPILER=$(command -v mpicc)"
+        "-DCMAKE_CXX_COMPILER=$(command -v mpicxx)"
+        "-DCMAKE_PREFIX_PATH=${LLVM_DIR}"
+        "-DENABLE_MLIR_CODEGEN=ON"
+        "-DUSE_OPENMP=ON"
+        "-DCUDAToolkit_ROOT=$(dirname "$(dirname "${CUDA_NVCC}")")"
+        "-DCMAKE_CUDA_ARCHITECTURES=90"
+    )
 fi
 
 # macOS-specific options
