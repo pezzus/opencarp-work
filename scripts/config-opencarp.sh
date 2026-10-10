@@ -117,6 +117,7 @@ if [[ "${PLATFORM}" == "cscs" ]]; then
         "-DUSE_OPENMP=ON"
         "-DCUDAToolkit_ROOT=$(dirname "$(dirname "${CUDA_NVCC}")")"
         "-DCMAKE_CUDA_ARCHITECTURES=90"
+        "-DCUDA_GPU_ARCH=sm_90"
     )
 fi
 

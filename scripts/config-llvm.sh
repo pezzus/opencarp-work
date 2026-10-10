@@ -113,6 +113,12 @@ cmake --install "${PYBIND11_BUILD}"
 # LLVM / MLIR
 # ---------------------------------------------------------------------------
 
+if [[ "${PLATFORM}" == "cscs" ]]; then
+  LLVM_TARGETS="AArch64;NVPTX"
+else
+  LLVM_TARGETS="host"
+fi
+
 echo "Configuring LLVM..."
 
 cmake \
@@ -121,7 +127,7 @@ cmake \
   -G Ninja \
   "${CMAKE_COMPILER_OPTIONS[@]}" \
   -DLLVM_ENABLE_PROJECTS="mlir;clang;lld" \
-  -DLLVM_TARGETS_TO_BUILD="host" \
+  -DLLVM_TARGETS_TO_BUILD="${LLVM_TARGETS}" \
   -DLLVM_ENABLE_RUNTIMES="openmp;compiler-rt;libcxx;libcxxabi;libunwind" \
   -DCMAKE_BUILD_TYPE=Release \
   -DMLIR_ENABLE_BINDINGS_PYTHON=ON \

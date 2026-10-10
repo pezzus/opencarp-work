@@ -9,6 +9,7 @@ dependencies = [
     "meshio>=5.3.5",
     "numpy>=2.4.6",
     "pandas>=3.0.3",
+    "pybind11>=3.1.0",
     "pysz>=1.0.3",
     "pyvista>=0.48.4",
     "rich>=15.0.0",
