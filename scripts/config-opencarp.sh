@@ -35,7 +35,7 @@ Examples:
 EOF
 }
 
-INT_TYPE="${1:-64}"
+INT_TYPE="${1:-32}"
 
 case "${INT_TYPE}" in
   32|64) ;;
@@ -55,13 +55,11 @@ HOST="$(hostname -s)"
 case "${HOST}" in
   daint-*|nid[0-9]*)
     PLATFORM="cscs"
+    export CC="$(command -v mpicc)"
+    export CXX="$(command -v mpicxx)"
     ;;
   *)
-    if [[ "${SLURM_CLUSTER_NAME:-}" == "daint" ]]; then
-      PLATFORM="cscs"
-    else
-      PLATFORM="local"
-    fi
+    PLATFORM="local"
     ;;
 esac
 
@@ -97,9 +95,8 @@ BUILD_DIR="${OPENCARP_DIR}/build_${INT_TYPE}bit"
 CMAKE_OPTIONS=(
   "-DDLOPEN=ON"
   "-DCMAKE_BUILD_TYPE=Release"
-  "-DENABLE_GINKGO=ON"
+  "-DENABLE_GINKGO=OFF"
   "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
-  "-DUSE_OPENMP=OFF"
   "-DENABLE_PETSC=ON"
   "-DOPENCARP_GLOBAL_INDEX_BITS=${INT_TYPE}"
   "-DOPENCARP_LOCAL_INDEX_BITS=${INT_TYPE}"
@@ -107,18 +104,23 @@ CMAKE_OPTIONS=(
   "-DBUILD_EXTERNAL=OFF"
 )
 
+if [[ "${PLATFORM}" == "cscs" ]]; then
+  CMAKE_OPTIONS+=(
+    "-DCMAKE_C_COMPILER=$(command -v mpicc)"
+    "-DCMAKE_CXX_COMPILER=$(command -v mpicxx)"
+    "-DCMAKE_PREFIX_PATH=${LLVM_DIR}"
+    "-DENABLE_MLIR_CODEGEN=ON"
+    "-DUSE_OPENMP=ON"
+  )
+fi
+
 # macOS-specific options
 if [[ "$(uname -s)" == "Darwin" ]]; then
   CMAKE_OPTIONS+=(
     "-DCMAKE_OSX_SYSROOT=$(xcrun --sdk macosx --show-sdk-path)"
+    "-DUSE_OPENMP=OFF"
   )
 fi
-
-# Optional MLIR support
-# CMAKE_OPTIONS+=(
-#   "-DCMAKE_PREFIX_PATH=${LLVM_DIR}"
-#   "-DENABLE_MLIR_CODEGEN=ON"
-# )
 
 # ---------------------------------------------------------------------------
 # Summary
