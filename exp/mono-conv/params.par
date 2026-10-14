@@ -1,0 +1,113 @@
+# ----------------------------------------------------------------------
+# Mesh and simulation
+# ----------------------------------------------------------------------
+
+meshname = ./cube
+
+spacedt = 0.1
+timedt  = 0.1
+dt = 25
+
+bidomain = 0
+bidm_eqv_mono = 1
+
+gridout_i = 0
+gridout_e = 0
+
+tend = 50
+
+mass_lumping = 0
+parab_solve = 1
+cg_tol_parab = 1e-06
+
+# ----------------------------------------------------------------------
+# Physical region
+# ----------------------------------------------------------------------
+
+num_phys_regions = 1
+
+phys_region[0].name = tissue
+phys_region[0].ptype = 0
+phys_region[0].num_IDs = 1
+phys_region[0].ID[0] = 1
+
+
+# ----------------------------------------------------------------------
+# Conductivity
+# ----------------------------------------------------------------------
+
+num_gregions = 1
+
+gregion[0].name = "tissue"
+gregion[0].num_IDs = 1
+gregion[0].ID[0] = 1
+
+gregion[0].g_il = 0.429
+gregion[0].g_it = 0.086
+gregion[0].g_in = 0.086
+
+# Not needed for monodomain, but retained from the existing setup
+gregion[0].g_el = 0.191
+gregion[0].g_et = 0.094
+gregion[0].g_en = 0.094
+
+
+# ----------------------------------------------------------------------
+# Ionic model
+# ----------------------------------------------------------------------
+
+num_imp_regions = 1
+
+imp_region[0].name = "tissue"
+imp_region[0].num_IDs = 1
+imp_region[0].ID[0] = 1
+imp_region[0].im = "tenTusscherPanfilov"
+imp_region[0].cellSurfVolRatio = 0.14
+
+
+# ----------------------------------------------------------------------
+# Stimulus
+# ----------------------------------------------------------------------
+
+num_stim = 1
+
+stim[0].name = stim
+stim[0].elec.vtx_file = cube.vtx
+stim[0].elec.domain = 1
+stim[0].elec.dump_vtx_file = 0
+
+stim[0].ptcl.duration = 40.0
+stim[0].ptcl.npls = 1
+stim[0].ptcl.start = 0.0
+
+stim[0].pulse.strength = 0.0
+stim[0].crct.type = 9
+
+
+# ----------------------------------------------------------------------
+# Activation time
+# ----------------------------------------------------------------------
+
+num_LATs = 1
+
+lats[0].measurand = 0
+lats[0].method = 1
+lats[0].all = 0
+lats[0].threshold = -40
+lats[0].mode = 0
+lats[0].ID = "activation_map"
+
+# LAT OPTIONS
+#num_LATs = 2
+#lats[0].measurand = 0
+#lats[0].method = 1
+#lats[0].all = 0
+#lats[0].threshold = -40
+#lats[0].mode = 0
+#lats[0].ID = "activation_map"
+#lats[1].measurand = 0
+#lats[1].method = 1
+#lats[1].all = 0
+#lats[1].threshold = -73.978670
+#lats[1].mode = 1
+#lats[1].ID = "repolarization_map"
