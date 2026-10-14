@@ -31,8 +31,8 @@ Build PETSc from `deps`:
 
 ```bash
 cd deps
-../scripts/config-petsc.sh 3.25.1 double 32 opt
-../scripts/config-petsc.sh 3.25.1 double 64 opt
+../scripts/config-petsc.sh 3.26.0 double 32 opt
+../scripts/config-petsc.sh 3.26.0 double 64 opt
 ```
 
 Build LLVM/MLIR if MLIR code generation is needed:

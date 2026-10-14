@@ -1,0 +1,11 @@
+diff --git a/mlir/include/mlir/Dialect/Affine/IR/ValueBoundsOpInterfaceImpl.h b/mlir/include/mlir/Dialect/Affine/IR/ValueBoundsOpInterfaceImpl.h
+--- a/mlir/include/mlir/Dialect/Affine/IR/ValueBoundsOpInterfaceImpl.h
++++ b/mlir/include/mlir/Dialect/Affine/IR/ValueBoundsOpInterfaceImpl.h
+@@ -10,6 +10,7 @@
+ #define MLIR_DIALECT_AFFINE_IR_VALUEBOUNDSOPINTERFACEIMPL_H
+ 
+ #include "mlir/Support/LogicalResult.h"
++#include <cstdint>
+ 
+ namespace mlir {
+ class DialectRegistry;
