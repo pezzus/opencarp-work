@@ -24,6 +24,8 @@ Environment:
   PETSC_BUILD_JOBS   Override the number of parallel build jobs
   PETSC_CUDA_ARCH    CUDA compute capability (default: 89 locally, 90 on CSCS)
   PETSC_CUDAC        Path to nvcc (default: nvcc found in PATH)
+  PETSC_OPENBLAS_DIR OpenBLAS prefix on CSCS
+                     (default: /user-environment/env/default)
   PETSC_CUDA_DRIVER_LIB_DIR
                      Directory containing libcuda.so when it is not in the
                      compiler's default link path (auto-detected on WSL)
@@ -83,6 +85,19 @@ esac
 
 if [[ "${PLATFORM}" == "cscs" ]]; then
   CUDA_ARCH="${PETSC_CUDA_ARCH:-90}"
+  OPENBLAS_DIR="${PETSC_OPENBLAS_DIR:-/user-environment/env/default}"
+  OPENBLAS_LIBRARY=""
+  for libdir in lib lib64; do
+    if [[ -f "${OPENBLAS_DIR}/${libdir}/libopenblas.so" ]]; then
+      OPENBLAS_LIBRARY="${OPENBLAS_DIR}/${libdir}/libopenblas.so"
+      break
+    fi
+  done
+  if [[ -z "${OPENBLAS_LIBRARY}" ]]; then
+    echo "Error: libopenblas.so was not found under ${OPENBLAS_DIR}/{lib,lib64}." >&2
+    echo "Set PETSC_OPENBLAS_DIR to the OpenBLAS installation prefix." >&2
+    exit 1
+  fi
 else
   CUDA_ARCH="${PETSC_CUDA_ARCH:-89}"
 fi
@@ -155,6 +170,9 @@ echo "Build jobs    : ${BUILD_JOBS}"
 echo "CUDA compiler : ${CUDA_COMPILER}"
 echo "CUDA arch     : ${CUDA_ARCH}"
 echo "CUDA driver   : ${CUDA_DRIVER_LIB_DIR:-system linker path}"
+if [[ "${PLATFORM}" == "cscs" ]]; then
+  echo "OpenBLAS      : ${OPENBLAS_LIBRARY}"
+fi
 echo "PETSC_DIR     : ${PETSC_DIR}"
 echo "PETSC_ARCH    : ${PETSC_ARCH}"
 
@@ -212,7 +230,7 @@ fi
 if [[ "${PLATFORM}" == "cscs" ]]; then
   CONFIGURE_OPTIONS+=(
     "--with-batch=1"
-    "--with-openblas-dir=/user-environment/env/default"
+    "--with-blaslapack-lib=${OPENBLAS_LIBRARY}"
     "--known-64-bit-blas-indices=0"
     "--known-sdot-returns-double=0"
     "--known-snrm2-returns-double=0"

@@ -4,8 +4,8 @@
 
 meshname = ./cube
 
-spacedt = 0.1
-timedt  = 0.1
+spacedt = 1.0
+timedt  = 1.0
 dt = 25
 
 bidomain = 0
@@ -14,7 +14,7 @@ bidm_eqv_mono = 1
 gridout_i = 0
 gridout_e = 0
 
-tend = 50
+tend = 10
 
 mass_lumping = 0
 parab_solve = 1
@@ -76,7 +76,7 @@ stim[0].elec.vtx_file = cube.vtx
 stim[0].elec.domain = 1
 stim[0].elec.dump_vtx_file = 0
 
-stim[0].ptcl.duration = 40.0
+stim[0].ptcl.duration = 1.0
 stim[0].ptcl.npls = 1
 stim[0].ptcl.start = 0.0
 
