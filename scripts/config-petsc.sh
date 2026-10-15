@@ -202,10 +202,6 @@ CONFIGURE_OPTIONS=(
   "CXXOPTFLAGS=-O3"
   "CUDAOPTFLAGS=-O3"
   "--with-mpi=1"
-  "--download-mpich"
-  "--with-cc=gcc"
-  "--with-cxx=g++"
-  "--with-fc=0"
   "--with-make-exec=gmake"
   "--with-fortran-bindings=0"
   "--with-precision=${REAL_TYPE}"
@@ -221,20 +217,30 @@ CONFIGURE_OPTIONS=(
   "--download-umpire"
 )
 
-if [[ -n "${CUDA_DRIVER_LIB_DIR}" ]]; then
-  CONFIGURE_OPTIONS+=(
-    "--download-mpich-configure-arguments=LDFLAGS=-L${CUDA_DRIVER_LIB_DIR}"
-  )
-fi
-
 if [[ "${PLATFORM}" == "cscs" ]]; then
   CONFIGURE_OPTIONS+=(
+    "--with-cc=mpicc"
+    "--with-cxx=mpicxx"
+    "--with-fc=mpifort"
+    "FOPTFLAGS=-O3"
     "--with-batch=1"
     "--with-blaslapack-lib=${OPENBLAS_LIBRARY}"
     "--known-64-bit-blas-indices=0"
     "--known-sdot-returns-double=0"
     "--known-snrm2-returns-double=0"
   )
+else
+  CONFIGURE_OPTIONS+=(
+    "--download-mpich"
+    "--with-cc=gcc"
+    "--with-cxx=g++"
+    "--with-fc=0"
+  )
+  if [[ -n "${CUDA_DRIVER_LIB_DIR}" ]]; then
+    CONFIGURE_OPTIONS+=(
+      "--download-mpich-configure-arguments=LDFLAGS=-L${CUDA_DRIVER_LIB_DIR}"
+    )
+  fi
 fi
 
 echo "Configuring PETSc..."
@@ -242,15 +248,17 @@ echo "Configuring PETSc..."
 
 # PETSc can recognize CUDA symbols in MPICH's Yaksa library even when MPICH's
 # own MPL CUDA probe failed. Catch that partial build before compiling PETSc.
-MPICH_MPL_CONFIG="$(find "${PETSC_DIR}/${PETSC_ARCH}/externalpackages" \
+if [[ "${PLATFORM}" == "local" ]]; then
+  MPICH_MPL_CONFIG="$(find "${PETSC_DIR}/${PETSC_ARCH}/externalpackages" \
   -path '*/src/mpl/include/mplconfig.h' -print -quit 2>/dev/null || true)"
 
-if [[ -n "${MPICH_MPL_CONFIG}" ]] && \
+  if [[ -n "${MPICH_MPL_CONFIG}" ]] && \
    ! grep -F '#define MPL_HAVE_CUDA 1' "${MPICH_MPL_CONFIG}" >/dev/null; then
-  echo "Error: the downloaded MPICH was built without MPL CUDA support." >&2
-  echo "Check its MPL config.log for a failed '-lcuda' link test." >&2
-  echo "If needed, set PETSC_CUDA_DRIVER_LIB_DIR to the directory containing libcuda.so." >&2
-  exit 1
+    echo "Error: the downloaded MPICH was built without MPL CUDA support." >&2
+    echo "Check its MPL config.log for a failed '-lcuda' link test." >&2
+    echo "If needed, set PETSC_CUDA_DRIVER_LIB_DIR to the directory containing libcuda.so." >&2
+    exit 1
+  fi
 fi
 
 # Reconfiguring an existing CUDA architecture after enabling Umpire can leave

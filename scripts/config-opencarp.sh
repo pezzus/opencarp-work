@@ -115,17 +115,28 @@ if [[ ! -d "${PETSC_DIR}/${PETSC_ARCH}" ]]; then
   exit 1
 fi
 
-PETSC_MPI_BIN="${PETSC_DIR}/${PETSC_ARCH}/bin"
+if [[ "${PLATFORM}" == "cscs" ]]; then
+  if ! command -v mpicc >/dev/null 2>&1 || ! command -v mpicxx >/dev/null 2>&1; then
+    echo "Error: system MPI compiler wrappers mpicc and mpicxx were not found." >&2
+    echo "Load the same MPI environment used to build PETSc." >&2
+    exit 1
+  fi
+  export CC="$(command -v mpicc)"
+  export CXX="$(command -v mpicxx)"
+else
+  PETSC_MPI_BIN="${PETSC_DIR}/${PETSC_ARCH}/bin"
 
-if [[ ! -x "${PETSC_MPI_BIN}/mpicc" || ! -x "${PETSC_MPI_BIN}/mpicxx" ]]; then
-  echo "Error: PETSc's bundled MPICH compiler wrappers were not found in:" >&2
-  echo "  ${PETSC_MPI_BIN}" >&2
-  exit 1
+  if [[ ! -x "${PETSC_MPI_BIN}/mpicc" || ! -x "${PETSC_MPI_BIN}/mpicxx" ]]; then
+    echo "Error: PETSc's bundled MPICH compiler wrappers were not found in:" >&2
+    echo "  ${PETSC_MPI_BIN}" >&2
+    exit 1
+  fi
+
+  export CC="${PETSC_MPI_BIN}/mpicc"
+  export CXX="${PETSC_MPI_BIN}/mpicxx"
+  export PATH="${PETSC_MPI_BIN}:${PATH}"
 fi
-
-export CC="${PETSC_MPI_BIN}/mpicc"
-export CXX="${PETSC_MPI_BIN}/mpicxx"
-export PATH="${PETSC_MPI_BIN}:${LLVM_DIR}/bin:${PATH}"
+export PATH="${LLVM_DIR}/bin:${PATH}"
 
 if [[ ! -d "${OPENCARP_DIR}" ]]; then
   echo "Error: openCARP directory not found: ${OPENCARP_DIR}" >&2
