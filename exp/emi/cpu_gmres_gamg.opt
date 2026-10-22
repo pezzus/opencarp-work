@@ -1,0 +1,22 @@
+# emi_backend: cpu
+# Same GAMG settings as the GPU preset for controlled comparisons.
+-ksp_type gmres
+-ksp_gmres_restart 30
+-ksp_pc_side left
+-ksp_norm_type preconditioned
+-ksp_atol 1e-8
+-ksp_rtol 1e-6
+-ksp_reuse_preconditioner true
+-pc_type gamg
+-pc_gamg_aggressive_coarsening 5
+-pc_gamg_aggressive_square_graph true
+-pc_gamg_coarse_eq_limit 5781
+-pc_gamg_coarse_grid_layout_type compact
+-pc_gamg_mat_coarsen_type mis
+-pc_gamg_parallel_coarse_grid_solver true
+-pc_gamg_process_eq_limit 101
+-pc_gamg_recompute_esteig false
+-pc_gamg_threshold 0.0091676848579
+-mg_levels_ksp_max_it 1
+-mg_levels_ksp_type chebyshev
+-mg_levels_pc_type jacobi

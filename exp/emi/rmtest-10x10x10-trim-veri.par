@@ -1,0 +1,35 @@
+# RMTest 10x10x10 EMI benchmark. Mesh data live in meshes/; results in output/.
+# Same physical parameters as the original mesh-side parameter file.
+num_phys_regions = 1
+phys_region[0].name = "EMI MESH"
+phys_region[0].ptype = 6
+phys_region[0].num_IDs = 1
+phys_region[0].ID[0] = 0
+
+dt = 5
+tend = 2
+spacedt = 0.25
+timedt = 0.25
+output_level = 10
+dump2MatLab = false
+meshname = "meshes/rmtest-10x10x10-trim-veri"
+
+num_gregions = 2
+gregion[0].name = "extra_regions_default"
+gregion[0].g_bath = 2.0
+gregion[1].name = "intra_regions_default"
+gregion[1].g_bath = 0.4
+
+num_stim = 1
+stim[0].name = "excitedReg"
+stim[0].ptcl.start = 0.0
+stim[0].ptcl.duration = 1.0
+stim[0].pulse.strength = 2000.0
+stim[0].crct.type = 0
+stim[0].elec.geomID = 561
+stim[0].elec.dump_vtx_file = 1
+
+num_imp_regions = 2
+imp_region_emi[0].im = "AlievPanfilov"
+imp_region_emi[1].im = "Plonsey"
+imp_region_emi[1].im_param = "Rm=0.0045"

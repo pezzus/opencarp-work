@@ -1,0 +1,13 @@
+# emi_backend: gpu
+# Mat/Vec types are set by run.sh before solver construction.
+# Matched screening criterion, not the old absolute-only default.
+-ksp_type cg
+-ksp_pc_side left
+-ksp_norm_type preconditioned
+-ksp_atol 1e-8
+-ksp_rtol 1e-6
+-ksp_reuse_preconditioner true
+-pc_type hypre
+-pc_hypre_type boomeramg
+-pc_hypre_boomeramg_max_iter 1
+-pc_hypre_boomeramg_tol 0.0

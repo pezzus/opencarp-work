@@ -6,6 +6,13 @@ build_32bit/*
 build_64bit/*
 
 deps/
+# Keep experiment data/results local, but retain empty-folder placeholders.
+exp/*/meshes/*
+exp/*/output/*
+!exp/*/meshes/.gitkeep
+!exp/*/output/.gitkeep
+# Older bi-atrial experiments still use the singular directory name.
+exp/bench-cscs/mesh
 
 # meshes
 *.msh
@@ -19,6 +26,7 @@ deps/
 *.pts
 *.belem
 *.bpts
+*.blon
 *.part
 
 # outputs

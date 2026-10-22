@@ -1,0 +1,139 @@
+EMI CPU/GPU scaling experiments on CSCS Daint
+============================================
+
+Submit from this directory. No experiment is launched by preparing these files.
+The default input is rmtest-10x10x10-trim-veri.par (2 ms, dt=5 us).
+The launcher refuses local execution unless --dry-run is supplied.
+
+Directory layout:
+  *.par / *.opt / run.sh   Small, tracked benchmark configuration files.
+  meshes/                 Untracked mesh data and partition files.
+  output/                 Untracked Slurm logs, simulation results and metadata.
+
+The tracked .par files use meshname="meshes/..."; submit from exp/emi so these
+paths resolve correctly. Old .par copies bundled inside meshes/ are not used.
+The output/ placeholder is tracked: Slurm needs this directory to exist before
+it starts the script and opens output/slurm-JOBID.out. Keep it when syncing.
+
+GPU examples (one MPI process per GPU, four GPUs per node):
+
+  sbatch --nodes=1 --ntasks-per-node=4 run.sh gpu_cg_hypre.opt
+  sbatch --nodes=2 --ntasks-per-node=4 run.sh gpu_cg_hypre.opt
+  sbatch --nodes=1 --ntasks-per-node=4 run.sh gpu_gmres_hypre.opt
+  sbatch --nodes=2 --ntasks-per-node=4 run.sh gpu_gmres_gamg.opt
+
+CPU examples (144 MPI ranks/node = 36 x 4; one CPU/thread per rank):
+
+  export OPENCARP_CPU_BIN=/absolute/path/to/cpu-only/build/bin/openCARP
+  sbatch --nodes=1 --ntasks-per-node=144 run.sh cpu_cg_hypre.opt
+  sbatch --nodes=2 --ntasks-per-node=144 run.sh cpu_gmres_gamg.opt
+
+IMPORTANT: the existing build_32bit CUDA binary is NOT a pure-CPU executable.
+Its ionic models select MLIR-CUDA automatically, independently of PETSc Mat/Vec
+types. CPU mode therefore requires an explicit OPENCARP_CPU_BIN built against
+CPU-only PETSc and with CUDA/ROCm ionic code generation disabled. That build
+may use either MLIR-CPU ionics or native CPU ionics. Record which one was built.
+This scaffold does not create that separate build or add runtime ionic-target
+selection to openCARP. CPU mode hides GPUs as a fail-fast safeguard, NOT as a
+runtime CPU-target selector. Supplying the current CUDA executable will fail.
+
+The job requests four GPUs per NODE, not per task. This allows the same script
+to accept 4 or 144 ranks/node. CPU runs reserve the node's GPUs but do not use
+them; this is a node-to-node CPU/GPU comparison, not a GPU-free allocation.
+GPU steps request one GPU per task with closest binding. CPU steps do not.
+Core binding and block:cyclic socket distribution are explicit, to spread CPU
+ranks across sockets. Verify actual placement on Daint using EMI_CPU_BIND=verbose,cores.
+Do not assume the count alone guarantees exactly 36 ranks per Grace CPU.
+Thread count follows --cpus-per-task; OMP binding is explicit, BLAS threads=1.
+For hybrid tests, keep ranks times cpus-per-task within the intended core budget.
+Correct Slurm spelling: --ntasks-per-node (plural), not --ntask-per-node.
+
+Options and overrides
+---------------------
+Each *.opt has an emi_backend comment selecting cpu or gpu. Custom options
+files can use the same comment, or set EMI_BACKEND=cpu|gpu at submission.
+Backend-specific Mat/Vec types are passed during PETSc initialization, since
+the openCARP -parab_options_file is read only later, while setting up the solver.
+No KSP or PC is hard-coded on the launcher's command line: file settings win
+over the application's default CG/GAMG selection.
+
+All six presets use preconditioned norms, atol=1e-8, rtol=1e-6, and PC reuse.
+The GAMG files preserve the supplied tuned configuration. GMRES restart is 30.
+The HYPRE files use one fixed BoomerAMG V-cycle per preconditioner application.
+CG requires a suitable symmetric positive preconditioner; do not switch to a
+nonsymmetric HYPRE relaxation scheme while retaining CG.
+These screening tolerances differ from the prior absolute-only default.
+Equal preconditioned norms with different PCs do not guarantee equal physical
+accuracy: compare Vm and true residuals before declaring a configuration best.
+
+Arguments before '+' are openCARP parameters; after '+' they are PETSc overrides:
+
+  sbatch --nodes=2 --ntasks-per-node=4 run.sh gpu_gmres_gamg.opt \
+    -gridout_emi 0 -spacedt 2 + -ksp_gmres_restart 50
+
+  # Reproduce the old absolute-only stopping rule as a separate control:
+  sbatch --nodes=1 --ntasks-per-node=4 run.sh gpu_cg_hypre.opt \
+    + -ksp_rtol 1e-50
+
+  # GPU-aware MPI diagnostic; keep other settings fixed:
+  sbatch --nodes=2 --ntasks-per-node=4 run.sh gpu_cg_hypre.opt \
+    + -use_gpu_aware_mpi 0
+
+The PETSc flag above does not necessarily disable HYPRE's own GPU-aware MPI.
+The checked CSCS HYPRE build has GPU-aware MPI compiled in. Record both layers.
+The launcher does not inject a preload shim or change MPI defaults. Existing
+LD_PRELOAD/PETSC_OPTIONS/MPI settings are inherited and recorded. Use the rebuilt
+binary with CUDA stubs removed from RUNPATH; assess the shim separately.
+
+The gridout_emi flag controls mesh output, not all EMI field output. Increasing
+spacedt reduces field cadence, but initial/final fields still exist. This is
+not an activation or complete I/O-off switch. Short runs must respect parameter
+validation (including the 1-ms stimulus duration); -tend 1.25 is a possible pilot
+that preserves the original stimulus, but do not compare it directly with 2 ms.
+
+Useful environment variables (export before sbatch; Slurm normally exports ALL):
+  OPENCARP_BIN      GPU executable (default: workspace/src/openCARP/build_32bit/bin/openCARP).
+  OPENCARP_CPU_BIN  Required CPU-only executable for CPU presets.
+  EMI_PARAM_FILE    Alternate base .par file (same relative mesh-path rules).
+  EMI_WORKDIR       Experiment directory, otherwise SLURM_SUBMIT_DIR or current dir.
+  EMI_RUN_DIR       Unique output directory; existing paths are refused.
+  EMI_BACKEND       Override the cpu/gpu header for a custom options file.
+  EMI_CPU_BIND      srun CPU binding, default cores (verbose,cores for inspection).
+  EMI_DISTRIBUTION  srun distribution, default block:cyclic.
+
+Preview without running openCARP or requiring Slurm:
+
+  bash run.sh --dry-run gpu_gmres_gamg.opt -gridout_emi 0
+  OPENCARP_CPU_BIN=/path/to/cpu/openCARP \
+    SLURM_JOB_NUM_NODES=2 SLURM_NTASKS=288 \
+    bash run.sh --dry-run cpu_cg_hypre.opt
+
+Evidence to retain
+------------------
+Each job has output/bench_job_JOBID_PRESET outputs and a sibling .metadata directory.
+The metadata contains the input parameter file, solver options, submitted
+script, exact command, selected environment, exit status, and petsc.log from
+-log_view. The application also writes its effective parameters and par_stats.
+The solver reads the saved solver.opt, so later edits to the original preset
+cannot change an already-started job during its mesh-initialization phase.
+Reusing an output directory is rejected to avoid accidental overwrite.
+For matched repeats, submit independent jobs; JobIDs keep their results apart.
+Slurm stdout/stderr are saved in output/slurm-JOBID.out by default.
+
+First compare the three solvers at 1 and 2 nodes with fixed protocol, binding,
+binary and MPI policy. Retain init separately from compute, total CG/GMRES
+iterations, solver seconds/iteration, and peak host/device memory. Use ordinary
+logging for timing runs; add -log_view_gpu_time or residual monitors only to
+separate diagnostic runs (they change synchronization/operation counts).
+KSP/PC views are also diagnostic: -ksp_view can print after every solve.
+
+Select configurations by both solution accuracy and total cost, then repeat
+the finalists three times and extend to 4 and 8 nodes. Before >2 billion nodes,
+validate 64-bit openCARP/PETSc and GPU-compatible HYPRE mixed integers on this
+smaller case; account for EMI bulk DOFs, face DOFs, AMG levels and GMRES storage.
+
+References:
+  https://slurm.schedmd.com/srun.html
+  https://docs.cscs.ch/running/slurm/
+  https://petsc.org/release/manualpages/PC/PCGAMG/
+  https://petsc.org/release/manualpages/PC/PCHYPRE/
