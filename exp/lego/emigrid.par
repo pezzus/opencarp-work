@@ -21,7 +21,7 @@ phys_region[0].ID[0]                 = 0
 # SIMULATION SETTINGS
 # ----------------------------------------------
 dt                                   = 5           # µs
-tend                                 = 10          # total simulation time
+tend                                 = 2.0          # total simulation time
 spacedt                              = 0.25        # Output every t ms
 timedt                               = 0.25        # Screen output every t ms
 output_level                         = 10          # Verbosity level
