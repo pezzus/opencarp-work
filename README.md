@@ -17,6 +17,34 @@ currently checked out in `src/openCARP` and is not yet an outer-repo submodule.
 | `exp` | experiment inputs and benchmark workspaces |
 | `notes` | handoff notes and machine-specific planning |
 
+## CSCS Install
+
+Compilation on a node:
+
+```bash
+srun -A lp157 --uenv=prgenv-gnu/26.3:v1 --view=default --partition debug --pty bash
+```
+
+Install `uv` in your `.local/bin` (so you can see in the path), then do:
+```bash
+uv sync
+```
+in the root folder.
+
+```bash
+mkdir deps && cd deps
+LLVM_BUILD_JOBS=128 ../scripts/config-llvm.sh
+../scripts/config-petsc.sh 3.26.0 double 32 opt
+```
+
+```bash
+cd ../src
+git clone git@git.opencarp.org:openCARP/openCARP.git
+cd openCARP
+git switch cscs-gpu
+../../scripts/config-opencarp.sh 32
+```
+
 ## Install
 
 macOS is the only fully configured profile at the moment.
